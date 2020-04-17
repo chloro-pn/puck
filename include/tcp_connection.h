@@ -11,6 +11,7 @@ namespace puck {
 class TcpConnection {
   friend class TcpServer;
   friend class Poller;
+  friend class EventLoop;
 private:
   enum class connState { go_on , succ_close, read_error, write_error, shutdown_error, force_colse };
   using callback_type = std::function<void(TcpConnection*)>;
@@ -27,6 +28,14 @@ private:
 
   void setListenSocketFlag() {
     listen_socket_ = true;
+  }
+
+  bool isEventFd() const {
+    return event_fd_;
+  }
+
+  void setEventFdFlag() {
+    event_fd_ = true;
   }
 
   int events() const {
@@ -141,6 +150,10 @@ public:
     return read_zero_;
   }
 
+  bool isWriteComplete() const {
+    return really_shutdown_wr_;
+  }
+
   size_t size() const {
     return read_buf_.usedSize();
   }
@@ -180,7 +193,11 @@ private:
   bool listen_socket_;
   callback_type on_accept_;
 
+  bool event_fd_;
+
   std::string iport_;
+
+  bool alive_;
 };
 }
 

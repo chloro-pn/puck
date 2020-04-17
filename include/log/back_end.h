@@ -1,6 +1,6 @@
 #pragma once
 #include "type.h"
-#include "thread_pool.h"
+#include "../util/thread_pool.h"
 #include "out_stream_base.h"
 #include "blocking_queue.h"
 #include "char_array_wrapper.h"
@@ -53,7 +53,7 @@ namespace pnlog {
     std::future<void> push_buf(CharArrayWrapper&& buf);
 
   private:
-    ThreadPool pool_;
+    tool::ThreadPool pool_;
 
     std::shared_ptr<event_pool> event_pool_;
 

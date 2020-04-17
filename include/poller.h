@@ -4,37 +4,80 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <map>
+#include <queue>
+#include <vector>
+#include <functional>
+#include <chrono>
+#include <mutex>
+#include <memory>
+#include <atomic>
 #include "console.h"
 #include "tcp_connection.h"
 
 namespace puck {
+
+using namespace std::chrono;
+
 class Poller {
 private:
   int epfd_;
+  int eventfd_;
   std::map<std::string, TcpConnection*> conns_;
+  using task_type = std::function<bool()>;
+
+  std::unique_ptr<std::mutex> mut_;
+  std::vector<std::function<void()>> funcs_;
+
+  std::atomic<bool> stop_;
+
+  struct time_event {
+    using tp_type = time_point<system_clock, milliseconds>;
+    tp_type time_point_;
+    milliseconds ms_;
+    task_type task_;
+    time_event(tp_type tp, milliseconds ms, const task_type& task):time_point_(tp),
+                                                  ms_(ms),
+                                                  task_(task)
+                                                  {
+
+    }
+  };
+
+  struct cmp_for_time_event {
+    bool operator()(const time_event& t1, const time_event& t2) {
+      return t1.time_point_ > t2.time_point_;
+    }
+  };
+
+  std::priority_queue<time_event, std::vector<time_event>, cmp_for_time_event> timers_;
 
 public:
   Poller();
 
   ~Poller();
 
-  void add(int fd, epoll_event* ev) {
-    int n = epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, ev);
-    if(n == -1) {
-      logger()->fatal("epoll add error.");
-    }
-    TcpConnection* ptr = static_cast<TcpConnection*>(ev->data.ptr);
-    if(ptr->isListenSocket()) {
-      return;
-    }
-    std::string key = ptr->iport();
-    if(conns_.find(key) != conns_.end()) {
-      logger()->fatal(piece("repeated iport : ", key));
-    }
-    conns_[key] = ptr;
+  void stop() {
+    stop_.store(true);
+    wake_up();
   }
 
+  void run_after(uint32_t ms, const task_type& task);
+
+  void add(int fd, epoll_event* ev);
+
+  int get_latest_time();
+
+  void handle_timer_events();
+
   void loop();
+
+  void wake_up();
+
+  void handle_wake_up();
+
+  void push_func(const std::function<void()>& func);
+
+  void handle_funcs();
 
   void clean(TcpConnection* ptr);
 

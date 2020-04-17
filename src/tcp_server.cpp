@@ -4,8 +4,13 @@
 namespace puck {
 void TcpServer::accept_callback(TcpConnection* con) {
   int clientfd = accept(con->fd(), nullptr, nullptr);
-  if(clientfd == -1 && errno != EWOULDBLOCK) {
-    logger()->fatal(piece("accept error, errno : ", strerror(errno)));
+  if(clientfd == -1) {
+    if(errno != EWOULDBLOCK) {
+      logger()->fatal(piece("accept error, errno : ", strerror(errno)));
+    }
+    else {
+      return;
+    }
   }
   else {
     sockets::set_nonblock(clientfd);
@@ -13,22 +18,7 @@ void TcpServer::accept_callback(TcpConnection* con) {
     ptr->setOnMessage(on_message_);
     ptr->setOnConnection(on_connection_);
     ptr->setOnWriteComplete(on_write_complete_);
-
-    std::string key = sockets::get_tcp_iport(clientfd);
-    ptr->set_iport(key);
-
-    ptr->onConnection();
-    if(ptr->shouldClose()) {
-      logger()->info(piece("fd ", clientfd, " closed, state : ", ptr->getState()));
-      delete ptr;
-      close(clientfd);
-    }
-    else {
-      epoll_event ev;
-      ev.data.ptr = ptr;
-      ev.events = ptr->events();
-      loop_->add(clientfd, &ev);
-    }
+    loop_->newConnection(ptr);
   }
 }
 
@@ -72,7 +62,7 @@ TcpServer::TcpServer(std::string unix_addr):listenfd_(-1), loop_(nullptr) {
   }
 }
 
-void TcpServer::bind(Poller* poller_) {
+void TcpServer::bind(EventLoop* poller_) {
   loop_ = poller_;
   epoll_event ev;
   ev.events = EPOLLIN;

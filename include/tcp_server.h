@@ -2,7 +2,7 @@
 #define TCP_SERVER_H
 
 #include "sockets.h"
-#include "poller.h"
+#include "event_loop.h"
 #include "tcp_connection.h"
 #include <cstring>
 #include <string>
@@ -18,7 +18,7 @@ namespace puck {
 class TcpServer {
 private:
   int listenfd_;
-  Poller* loop_;
+  EventLoop* loop_;
   using callback_type = std::function<void(TcpConnection*)>;
   callback_type on_connection_;
   callback_type on_message_;
@@ -43,7 +43,7 @@ public:
     on_write_complete_ = ct;
   }
 
-  void bind(Poller* poller_);
+  void bind(EventLoop* poller_);
 };
 
 }

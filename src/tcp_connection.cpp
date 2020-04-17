@@ -16,7 +16,8 @@ TcpConnection::TcpConnection(int fd, int events):
                              want_shutdown_wr_(false),
                              really_shutdown_wr_(false),
                              read_zero_(false),
-                             listen_socket_(false) {
+                             listen_socket_(false),
+                             alive_(true) {
 
 }
 
@@ -48,6 +49,7 @@ void TcpConnection::handle(int events) {
   int init_events = events_;
   events_change_ = false;
   if(events & EPOLLIN) {
+    alive_ = true;
     if(read_buf_.unusedSize() == 0) {
       logger()->warning("too many messages storaged in the read buf.");
     }
@@ -85,10 +87,12 @@ void TcpConnection::handle(int events) {
 
   if(events & EPOLLOUT) {
     int n = ::write(fd_, write_buf_.data(), write_buf_.usedSize());
-    if (n == -1 && errno != EWOULDBLOCK) {
-      setState(connState::write_error);
-      error_value_ = errno;
-      return;
+    if (n == -1) {
+      if(errno != EWOULDBLOCK) {
+        setState(connState::write_error);
+        error_value_ = errno;
+        return;
+      }
     }
     else {
       write_buf_.abandon(n);

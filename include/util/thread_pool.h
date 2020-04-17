@@ -1,14 +1,15 @@
 #pragma once
-#include "condition_variable_type.h"
-#include "type.h"
-#include "spin_lock.h"
+#include "../log/condition_variable_type.h"
+#include "../log/type.h"
+#include "../log/spin_lock.h"
 #include <thread>
 #include <vector>
 #include <functional>
 #include <list>
 #include <mutex>
 
-namespace pnlog {
+namespace tool {
+using namespace pnlog;
   class ThreadPool {
   private:
     using lock_type = spin;
@@ -24,11 +25,11 @@ namespace pnlog {
     exception_callback ec_;
 
   public:
-    ThreadPool(size_type count);
+    ThreadPool();
 
     void each_thread();
 
-    void start();
+    void start(size_type);
 
     void stop();
 

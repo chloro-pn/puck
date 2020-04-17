@@ -18,7 +18,7 @@ namespace pnlog {
     outers_.at(static_cast<unsigned int>(index))->write(ptr, n);
   }
 
-  BackEnd::BackEnd(size_type size) :pool_(1),
+  BackEnd::BackEnd(size_type size) :pool_(),
                                     event_pool_(new event_pool()),
                                     size_of_streams_and_bufs_(size),
                                     ca_allocator_(CharArrayAllocator::instance()),
@@ -32,7 +32,7 @@ namespace pnlog {
     options op;
     op.asyn = false;
     open(op, 0, new StdOutStream(stdout));
-    pool_.start();
+    pool_.start(1);
   }
 
   std::shared_ptr<CapTure> BackEnd::get_capture(size_type index) {

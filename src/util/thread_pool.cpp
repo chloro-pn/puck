@@ -1,7 +1,7 @@
-#include "../../include/log/thread_pool.h"
+#include "../../include/util/thread_pool.h"
 
-namespace pnlog {
-  ThreadPool::ThreadPool(size_type count) :th_counts_(count), stop_(false) {
+namespace tool {
+  ThreadPool::ThreadPool() :th_counts_(-1), stop_(false) {
 
   }
 
@@ -28,7 +28,8 @@ namespace pnlog {
     }
   }
 
-  void ThreadPool::start() {
+  void ThreadPool::start(size_type count) {
+    th_counts_ = count;
     for (size_type i = 0; i < th_counts_; ++i) {
       threads_.emplace_back([this]()->void {
         this->each_thread();
