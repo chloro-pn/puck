@@ -63,9 +63,10 @@ void Poller::add(int fd, epoll_event* ev) {
   }
   conns_[key] = ptr;
 
-  std::ostringstream ss;
-  ss << std::this_thread::get_id();
-  logger()->info(piece("new connection on thread : ", ss.str()));
+  //std::ostringstream ss;
+  //ss << std::this_thread::get_id();
+  //logger()->info(piece("new connection on thread : ", ss.str()));
+
 
   run_after(5000, [this, key]()->bool {
     if(this->conns_.find(key) == this->conns_.end()) {
@@ -84,6 +85,7 @@ void Poller::add(int fd, epoll_event* ev) {
     }
     return true;
   });
+
 }
 
 int Poller::get_latest_time() {
@@ -107,9 +109,10 @@ int Poller::get_latest_time() {
 }
 
 void Poller::clean(TcpConnection *ptr) {
+  ptr->onClose();
   int fd = ptr->fd();
   epoll_ctl(epfd_, EPOLL_CTL_DEL,ptr->fd(), nullptr);
-  logger()->info(piece("fd ", fd, " close. state : ", ptr->getState()));
+  logger()->info(piece("fd ", fd, " close. state : ", ptr->getStateStr()));
   int n = close(fd);
   if(n == -1) {
     logger()->fatal(piece("close error. errno : ", strerror(errno)));

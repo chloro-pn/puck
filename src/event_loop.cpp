@@ -38,7 +38,8 @@ void EventLoop::new_connection_callback(Poller* loop, TcpConnection* ptr) {
 
   ptr->onConnection();
   if(ptr->shouldClose()) {
-    logger()->info(piece("fd ", clientfd, " closed, state : ", ptr->getState()));
+    ptr->onClose();
+    logger()->info(piece("fd ", clientfd, " closed, state : ", ptr->getStateStr()));
     delete ptr;
     ::close(clientfd);
   }

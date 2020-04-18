@@ -21,7 +21,7 @@ TcpConnection::TcpConnection(int fd, int events):
 
 }
 
-const char* TcpConnection::getState() {
+const char* TcpConnection::getStateStr() {
   if(state_ == connState::go_on) {
     return "go_on";
   }
@@ -88,7 +88,7 @@ void TcpConnection::handle(int events) {
   if(events & EPOLLOUT) {
     int n = ::write(fd_, write_buf_.data(), write_buf_.usedSize());
     if (n == -1) {
-      if(errno != EWOULDBLOCK) {
+      if(errno != EWOULDBLOCK || errno != EPIPE) {
         setState(connState::write_error);
         error_value_ = errno;
         return;

@@ -18,6 +18,7 @@ void TcpServer::accept_callback(TcpConnection* con) {
     ptr->setOnMessage(on_message_);
     ptr->setOnConnection(on_connection_);
     ptr->setOnWriteComplete(on_write_complete_);
+    ptr->setOnClose(on_close_);
     loop_->newConnection(ptr);
   }
 }

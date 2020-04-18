@@ -12,8 +12,11 @@ class TcpConnection {
   friend class TcpServer;
   friend class Poller;
   friend class EventLoop;
-private:
+
+public:
   enum class connState { go_on , succ_close, read_error, write_error, shutdown_error, force_colse };
+
+private:
   using callback_type = std::function<void(TcpConnection*)>;
 
   int fd() const {
@@ -46,8 +49,6 @@ private:
   bool isEventsChange() const {
     return events_change_;
   }
-
-  const char* getState();
 
   void setState(connState s) {
     state_ = s;
@@ -83,6 +84,12 @@ private:
     }
   }
 
+  void onClose() {
+    if(on_close_) {
+      on_close_(this);
+    }
+  }
+
   void onAccept() {
     assert(listen_socket_ == true);
     on_accept_(this);
@@ -98,6 +105,10 @@ private:
 
   void setOnWriteComplete(callback_type ct) {
     on_write_complete_ = ct;
+  }
+
+  void setOnClose(callback_type ct) {
+    on_close_ = ct;
   }
 
   void setOnAccept(callback_type ct) {
@@ -170,6 +181,12 @@ public:
     return iport_;
   }
 
+  connState getState() const {
+    return state_;
+  }
+
+  const char* getStateStr();
+
 private:
   Buffer read_buf_;
   Buffer write_buf_;
@@ -189,6 +206,7 @@ private:
   callback_type on_connection_;
   callback_type on_message_;
   callback_type on_write_complete_;
+  callback_type on_close_;
 
   bool listen_socket_;
   callback_type on_accept_;

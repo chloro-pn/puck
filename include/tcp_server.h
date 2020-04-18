@@ -23,6 +23,7 @@ private:
   callback_type on_connection_;
   callback_type on_message_;
   callback_type on_write_complete_;
+  callback_type on_close_;
 
   void accept_callback(TcpConnection* con);
 
@@ -41,6 +42,10 @@ public:
 
   void setOnWriteComplete(callback_type ct) {
     on_write_complete_ = ct;
+  }
+
+  void setOnClose(callback_type ct) {
+    on_close_ = ct;
   }
 
   void bind(EventLoop* poller_);
