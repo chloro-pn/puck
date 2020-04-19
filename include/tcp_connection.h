@@ -58,14 +58,6 @@ private:
     return state_ != connState::go_on;
   }
 
-  const char* data() const {
-    return read_buf_.data();
-  }
-
-  void abandon(size_t n) {
-    read_buf_.abandon(n);
-  }
-
   void onConnection() {
     if(on_connection_) {
       on_connection_(this);
@@ -167,6 +159,14 @@ public:
 
   size_t size() const {
     return read_buf_.usedSize();
+  }
+
+  const char* data() const {
+    return read_buf_.data();
+  }
+
+  void abandon(size_t n) {
+    read_buf_.abandon(n);
   }
 
   std::string read(size_t n) {

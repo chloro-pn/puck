@@ -3,23 +3,25 @@
 
 namespace puck {
 void TcpServer::accept_callback(TcpConnection* con) {
-  int clientfd = accept(con->fd(), nullptr, nullptr);
-  if(clientfd == -1) {
-    if(errno != EWOULDBLOCK) {
-      logger()->fatal(piece("accept error, errno : ", strerror(errno)));
+  while(true) {
+    int clientfd = accept(con->fd(), nullptr, nullptr);
+    if(clientfd == -1) {
+      if(errno != EWOULDBLOCK) {
+        logger()->fatal(piece("accept error, errno : ", strerror(errno)));
+      }
+      else {
+        break;
+      }
     }
     else {
-      return;
+      sockets::set_nonblock(clientfd);
+      TcpConnection* ptr = new TcpConnection(clientfd, EPOLLIN);
+      ptr->setOnMessage(on_message_);
+      ptr->setOnConnection(on_connection_);
+      ptr->setOnWriteComplete(on_write_complete_);
+      ptr->setOnClose(on_close_);
+      loop_->newConnection(ptr);
     }
-  }
-  else {
-    sockets::set_nonblock(clientfd);
-    TcpConnection* ptr = new TcpConnection(clientfd, EPOLLIN);
-    ptr->setOnMessage(on_message_);
-    ptr->setOnConnection(on_connection_);
-    ptr->setOnWriteComplete(on_write_complete_);
-    ptr->setOnClose(on_close_);
-    loop_->newConnection(ptr);
   }
 }
 
@@ -40,7 +42,7 @@ TcpServer::TcpServer(std::string ip, uint16_t port):listenfd_(-1), loop_(nullptr
   if(result != 0) {
     logger()->fatal(piece("bind error : ", strerror(errno)));
   }
-  result = listen(listenfd_, 1024);
+  result = listen(listenfd_, 1024000);
   if(result != 0) {
     logger()->fatal(piece("listen error : ", strerror(errno)));
   }

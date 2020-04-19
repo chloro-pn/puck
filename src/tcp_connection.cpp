@@ -17,6 +17,7 @@ TcpConnection::TcpConnection(int fd, int events):
                              really_shutdown_wr_(false),
                              read_zero_(false),
                              listen_socket_(false),
+                             event_fd_(false),
                              alive_(true) {
 
 }

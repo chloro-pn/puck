@@ -35,13 +35,14 @@ void EventLoop::new_connection_callback(Poller* loop, TcpConnection* ptr) {
   int clientfd = ptr->fd();
   std::string key = sockets::get_tcp_iport(clientfd);
   ptr->set_iport(key);
-
   ptr->onConnection();
   if(ptr->shouldClose()) {
     ptr->onClose();
-    logger()->info(piece("fd ", clientfd, " closed, state : ", ptr->getStateStr()));
     delete ptr;
-    ::close(clientfd);
+    int n = ::close(clientfd);
+    if(n == -1) {
+      logger()->fatal(piece("close error : ", strerror(errno)));
+    }
   }
   else {
     epoll_event ev;
