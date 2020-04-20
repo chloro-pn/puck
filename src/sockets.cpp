@@ -6,6 +6,7 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h> // TCP_NODELAY
 
 namespace puck {
 int sockets::get_nonblock_socket() {
@@ -34,6 +35,14 @@ void sockets::set_nonblock(int fd) {
   int result = fcntl(fd, F_SETFL, flags);
   if(result < 0) {
     logger()->fatal(piece("soket error. ", strerror(errno)));
+  }
+}
+
+void sockets::no_delay(int fd) {
+  int onoff = 1;
+  int ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY , &onoff, sizeof(onoff));
+  if(ret < 0) {
+    logger()->fatal(piece("setsockopt error. ", strerror(errno)));
   }
 }
 

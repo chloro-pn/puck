@@ -14,7 +14,7 @@ class TcpConnection {
   friend class EventLoop;
 
 public:
-  enum class connState { go_on , succ_close, read_error, write_error, shutdown_error, force_colse };
+  enum class connState { go_on , succ_close, read_error, write_error, shutdown_error, force_colse, out_of_data };
 
 private:
   using callback_type = std::function<void(TcpConnection*)>;
@@ -118,6 +118,17 @@ private:
     iport_ = str;
   }
 
+  void openHeartBeat(int ms) {
+    heart_beat_ = true;
+    assert(ms > 0);
+    each_ms_ = ms;
+  }
+
+  bool isOpenHeartBeat() const {
+    return heart_beat_;
+  }
+
+
 public:
   void send(const char* ptr) {
     send(ptr, strlen(ptr));
@@ -216,6 +227,8 @@ private:
   std::string iport_;
 
   bool alive_;
+  bool heart_beat_;
+  int each_ms_;
 };
 }
 

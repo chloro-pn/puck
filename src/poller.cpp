@@ -66,26 +66,11 @@ void Poller::add(int fd, epoll_event* ev) {
   //std::ostringstream ss;
   //ss << std::this_thread::get_id();
   //logger()->info(piece("new connection on thread : ", ss.str()));
-
-/*
-  run_after(2000, [this, key]()->bool {
-    if(this->conns_.find(key) == this->conns_.end()) {
-      logger()->info(piece("connection : ", key, " has been closed."));
-      return false;
-    }
-    TcpConnection* ptr = conns_[key];
-    if(ptr->alive_ == false) {
-      logger()->info(piece("fd : ", ptr->fd(), key, " out of date."));
-      ptr->setState(TcpConnection::connState::force_colse);
-      clean(ptr);
-      return false;
-    }
-    else {
-      ptr->alive_ = false;
-    }
-    return true;
-  });
-*/
+  if(ptr->isOpenHeartBeat()) {
+    run_after(ptr->each_ms_, [this, key]()->bool {
+      return handle_heart_beat(key);
+    });
+  }
 }
 
 int Poller::get_latest_time() {
@@ -114,7 +99,6 @@ void Poller::clean(TcpConnection *ptr) {
   epoll_ctl(epfd_, EPOLL_CTL_DEL,ptr->fd(), nullptr);
   if(ptr->getState() != TcpConnection::connState::succ_close) {
     logger()->warning(piece("fd ", fd, " close. state : ", ptr->getStateStr()));
-    logger()->warning(piece("error : ", strerror(ptr->error_value_)));
   }
   int n = close(fd);
   if(n == -1) {
@@ -218,5 +202,23 @@ void Poller::handle_funcs() {
   for(auto& each : tmp) {
     each();
   }
+}
+
+bool Poller::handle_heart_beat(std::string key) {
+  if(this->conns_.find(key) == this->conns_.end()) {
+    logger()->info(piece("connection : ", key, " has been closed."));
+    return false;
+  }
+  TcpConnection* ptr = conns_[key];
+  if(ptr->alive_ == false) {
+    logger()->info(piece("fd : ", ptr->fd(), key, " out of date."));
+    ptr->setState(TcpConnection::connState::out_of_data);
+    clean(ptr);
+    return false;
+  }
+  else {
+    ptr->alive_ = false;
+  }
+  return true;
 }
 }

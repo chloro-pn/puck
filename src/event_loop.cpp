@@ -20,11 +20,16 @@ EventLoop::EventLoop(int n) {
 }
 
 EventLoop::~EventLoop() {
+  stop();
+}
+
+void EventLoop::stop() {
   base_loop_.stop();
   for(auto& each : loops_) {
     each->stop();
   }
   thread_pool_.stop();
+  logger()->info("EventLoop stop.");
 }
 
 void EventLoop::add(int fd, epoll_event* ev) {

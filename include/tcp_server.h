@@ -24,11 +24,13 @@ private:
   callback_type on_message_;
   callback_type on_write_complete_;
   callback_type on_close_;
+  int each_ms_;
+  bool heart_beat_;
 
   void accept_callback(TcpConnection* con);
 
 public:
-  TcpServer(std::string ip, uint16_t port);
+  TcpServer(uint16_t port);
 
   TcpServer(std::string unix_addr);
 
@@ -49,6 +51,16 @@ public:
   }
 
   void bind(EventLoop* poller_);
+
+  void openHeartBeat(int ms) {
+    heart_beat_ = true;
+    assert(ms > 0);
+    each_ms_ = ms;
+  }
+
+  bool isOpenHeartBeat() const {
+    return heart_beat_;
+  }
 };
 
 }

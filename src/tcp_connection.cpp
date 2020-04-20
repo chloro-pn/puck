@@ -18,7 +18,9 @@ TcpConnection::TcpConnection(int fd, int events):
                              read_zero_(false),
                              listen_socket_(false),
                              event_fd_(false),
-                             alive_(true) {
+                             alive_(true),
+                             heart_beat_(false),
+                             each_ms_(-1) {
 
 }
 
@@ -40,6 +42,9 @@ const char* TcpConnection::getStateStr() {
   }
   else if(state_ == connState::shutdown_error) {
     return "shutdown error";
+  }
+  else if(state_ == connState::out_of_data) {
+    return "out of date";
   }
   else {
     return "unknow error";

@@ -82,6 +82,8 @@ public:
   void clean(TcpConnection* ptr);
 
   void change(TcpConnection* ptr);
+
+  bool handle_heart_beat(std::string key);
 };
 }
 

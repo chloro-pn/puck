@@ -30,6 +30,8 @@ public:
   void start() {
     base_loop_.loop();
   }
+
+  void stop();
 };
 }
 

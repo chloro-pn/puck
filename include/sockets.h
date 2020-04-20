@@ -10,6 +10,8 @@ public:
 
   static void set_nonblock(int fd);
 
+  static void no_delay(int fd);
+
   static std::string get_tcp_iport(int fd);
 };
 }
