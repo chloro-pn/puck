@@ -168,7 +168,18 @@ void Poller::loop() {
         handle_wake_up();
         continue;
       }
-      ptr->handle(evs[i].events);
+      if(ptr->isConning() == true) {
+        ptr->setConnectedFlag();
+        ptr->events_ = EPOLLIN;
+        int init_event = ptr->events();
+        ptr->onSuccConn();
+        if(ptr->events() != init_event) {
+          ptr->events_change_ = true;
+        }
+      }
+      else {
+        ptr->handle(evs[i].events);
+      }
       if(ptr->shouldClose()) {
         clean(ptr);
       }

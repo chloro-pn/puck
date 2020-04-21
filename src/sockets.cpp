@@ -81,4 +81,46 @@ std::string sockets::get_tcp_iport(int fd) {
   result.append(std::to_string(ntohs(addr.sin_port)));
   return result;
 }
+
+std::string sockets::get_local_addr(int fd) {
+  std::string result;
+  sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  socklen_t len = sizeof(addr);
+  int n = getsockname(fd, (struct sockaddr*)&addr, &len);
+  if(n != 0) {
+    logger()->fatal(piece("getsockname error. ", strerror(errno)));
+  }
+  char buf[64] = {'\0'};
+  const char* ptr = inet_ntop(AF_INET, &addr, buf, sizeof(buf) - 1);
+  if(ptr == nullptr) {
+    logger()->fatal(piece("inet_ntop error. ", strerror(errno)));
+  }
+  result.append(buf, strlen(buf));
+  result.push_back(':');
+  result.append(std::to_string(ntohs(addr.sin_port)));
+  return result;
+}
+
+std::string sockets::get_peer_addr(int fd) {
+  std::string result;
+  sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  socklen_t len = sizeof(addr);
+
+  char buf[64] = {'\0'};
+  memset(&addr, 0, sizeof(addr));
+  int n = getpeername(fd, (struct sockaddr*)& addr, &len);
+  if(n != 0) {
+    logger()->fatal(piece("getpeername error. ", strerror(errno)));
+  }
+  const char* ptr = inet_ntop(AF_INET, &addr, buf, sizeof(buf) - 1);
+  if(ptr == nullptr) {
+    logger()->fatal(piece("inet_ntop error. ", strerror(errno)));
+  }
+  result.append(buf, strlen(buf));
+  result.push_back(':');
+  result.append(std::to_string(ntohs(addr.sin_port)));
+  return result;
+}
 }

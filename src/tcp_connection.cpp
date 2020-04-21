@@ -20,7 +20,8 @@ TcpConnection::TcpConnection(int fd, int events):
                              event_fd_(false),
                              alive_(true),
                              heart_beat_(false),
-                             each_ms_(-1) {
+                             each_ms_(-1),
+                             conning_(false) {
 
 }
 

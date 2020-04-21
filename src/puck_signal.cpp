@@ -10,7 +10,7 @@ void handle_all_sigs(int sig) {
   if(maps.find(sig) ==maps.end()) {
     return;
   }
-  maps[sig](sig);
+  maps[sig]();
 }
 
 Signal::Signal() {
@@ -22,7 +22,7 @@ Signal& Signal::instance() {
   return object;
 }
 
-void Signal::handle(int sig, const std::function<void (int)> &handle) {
+void Signal::handle(int sig, const std::function<void ()> &handle) {
   sig_handle_[sig] = handle;
   struct sigaction act, oact;
   sigemptyset(&act.sa_mask);
