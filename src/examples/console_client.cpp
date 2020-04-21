@@ -53,9 +53,7 @@ int main() {
   });
   myClient client("127.0.0.1", 12345);
   client.bind(&pool);
-  for(int i = 0; i < 10; ++i) {
-    client.connect();
-  }
+  client.connect();
   pool.loop();
   return 0;
 }

@@ -51,7 +51,7 @@ public:
   }
 };
 
-int main1() {
+int main() {
   Signal::instance().ign(SIGPIPE);
   logger()->enable_time();
 
