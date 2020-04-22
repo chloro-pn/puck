@@ -46,6 +46,22 @@ void sockets::no_delay(int fd) {
   }
 }
 
+uint16_t sockets::hostToNetwork(uint16_t n) {
+  return htons(n);
+}
+
+uint16_t sockets::networkToHost(uint16_t n) {
+  return ntohs(n);
+}
+
+uint32_t sockets::hostToNetwork(uint32_t n) {
+  return htonl(n);
+}
+
+uint32_t sockets::networkToHost(uint32_t n) {
+  return ntohl(n);
+}
+
 std::string sockets::get_tcp_iport(int fd) {
   std::string result;
   sockaddr_in addr;

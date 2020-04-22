@@ -32,8 +32,6 @@ private:
 public:
   TcpServer(uint16_t port);
 
-  TcpServer(std::string unix_addr);
-
   void setOnConnection(callback_type ct) {
     on_connection_ = ct;
   }
@@ -62,7 +60,6 @@ public:
     return heart_beat_;
   }
 };
-
 }
 
 #endif // TCP_SERVER_H

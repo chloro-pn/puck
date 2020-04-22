@@ -19,6 +19,8 @@ namespace puck {
 using namespace std::chrono;
 
 class Poller {
+  friend class Client;
+
 private:
   int epfd_;
   int eventfd_;

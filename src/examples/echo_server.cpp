@@ -13,9 +13,9 @@ private:
 
 public:
   explicit echo_server(uint16_t port):ts_(port) {
+
     ts_.setOnConnection([](TcpConnection* con)->void {
       if(con->isReadComplete() == true) {
-        logger()->trace("echo read zero");
         con->shutdownWr();
       }
       else {
@@ -24,25 +24,20 @@ public:
     });
 
     ts_.setOnMessage([](TcpConnection* con)->void {
-      logger()->trace(piece(con->iport(), " message get!"));
-      int n = con->size();
+      logger()->trace(" message get!");
       con->send(con->data(), con->size());
-      con->abandon(n);
+      con->abandon(con->size());
     });
-
-    ts_.setOnWriteComplete([](TcpConnection* con)->void {
-      logger()->trace("echo write complete!");
-    });
-
+/*
     ts_.setOnClose([](TcpConnection* con)->void {
       if(con->getState() == TcpConnection::connState::succ_close) {
-        logger()->trace("succ close!");
+        //logger()->trace("succ close!");
       }
       else {
         logger()->warning(piece("close state : ", con->getStateStr()));
       }
     });
-
+*/
     //ts_.openHeartBeat(2000);
   }
 
@@ -52,6 +47,10 @@ public:
 };
 
 int main() {
+  pnlog::BackEnd::options op;
+  op.asyn = true;
+  pnlog::backend->open(op, 1, new pnlog::FileOutStream("log.txt"));
+
   Signal::instance().ign(SIGPIPE);
   logger()->enable_time();
 

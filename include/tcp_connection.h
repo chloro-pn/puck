@@ -2,6 +2,7 @@
 #define TCP_CONNECTION_H
 
 #include "buffer.h"
+#include "codec.h"
 #include <functional>
 #include <sys/epoll.h>
 #include <cassert>
@@ -12,9 +13,18 @@ class TcpConnection {
   friend class TcpServer;
   friend class Poller;
   friend class EventLoop;
+  friend class Client;
+  friend class Codec;
 
 public:
-  enum class connState { go_on , succ_close, read_error, write_error, shutdown_error, force_colse, out_of_data };
+  enum class connState { go_on ,
+                         succ_close,
+                         read_error,
+                         write_error,
+                         shutdown_error,
+                         force_colse,
+                         out_of_data,
+                         codec_error };
 
 private:
   using callback_type = std::function<void(TcpConnection*)>;
@@ -23,7 +33,17 @@ private:
     return fd_;
   }
 
-  TcpConnection(int fd, int events);
+  TcpConnection(int fd, int events, Codec* codec = nullptr);
+
+  ~TcpConnection();
+
+  void setCodec(Codec* codec) {
+    codec_ = codec;
+    codec_->setOnMessage(on_message_);
+    on_message_ = [this](TcpConnection* ptr)->void {
+      this->codec_->onMessage(ptr);
+    };
+  }
 
   bool isListenSocket() const {
     return listen_socket_;
@@ -41,10 +61,21 @@ private:
     event_fd_ = true;
   }
 
+  bool isConning() const {
+    return conning_;
+  }
+
+  void setConnectedFlag() {
+    conning_ = false;
+  }
+
+  void setConningFlag() {
+    conning_ = true;
+  }
+
   int events() const {
     return events_;
   }
-
 
   bool isEventsChange() const {
     return events_change_;
@@ -87,12 +118,23 @@ private:
     on_accept_(this);
   }
 
+  void onSuccConn() {
+    on_succ_conn_(this);
+  }
+
   void setOnConnection(callback_type ct) {
     on_connection_ = ct;
   }
 
   void setOnMessage(callback_type ct) {
-    on_message_ = ct;
+    if(codec_ == nullptr) {
+      on_message_ = ct;
+      return;
+    }
+    codec_->setOnMessage(ct);
+    on_message_ = [this](TcpConnection* ptr)->void {
+      this->codec_->onMessage(ptr);
+    };
   }
 
   void setOnWriteComplete(callback_type ct) {
@@ -106,6 +148,10 @@ private:
   void setOnAccept(callback_type ct) {
     assert(listen_socket_ == true);
     on_accept_ = ct;
+  }
+
+  void setOnSuccConn(callback_type ct) {
+    on_succ_conn_ = ct;
   }
 
   bool eventsChange() const {
@@ -128,22 +174,12 @@ private:
     return heart_beat_;
   }
 
-
 public:
   void send(const char* ptr) {
     send(ptr, strlen(ptr));
   }
 
-  void send(const char* ptr, size_t n) {
-    if(want_shutdown_wr_ == true) {
-      return;
-    }
-    write_buf_.push(ptr, n);
-    if(writing_ == false) {
-      events_ = events_ | EPOLLOUT;
-      writing_ = true;
-    }
-  }
+  void send(const char* ptr, size_t n);
 
   void shutdownWr() {
     if(want_shutdown_wr_ == true) {
@@ -166,6 +202,10 @@ public:
 
   bool isWriteComplete() const {
     return really_shutdown_wr_;
+  }
+
+  Codec* getCodec() const {
+    return codec_;
   }
 
   size_t size() const {
@@ -198,6 +238,15 @@ public:
 
   const char* getStateStr();
 
+  template<typename T>
+  T* getContext() const {
+    return static_cast<T*>(context_.get());
+  }
+
+  void setContext(std::shared_ptr<void> ptr) {
+    context_ = ptr;
+  }
+
 private:
   Buffer read_buf_;
   Buffer write_buf_;
@@ -224,11 +273,18 @@ private:
 
   bool event_fd_;
 
+  bool conning_;
+  callback_type on_succ_conn_;
+
   std::string iport_;
 
   bool alive_;
   bool heart_beat_;
   int each_ms_;
+
+  std::shared_ptr<void> context_;
+
+  Codec* codec_;
 };
 }
 

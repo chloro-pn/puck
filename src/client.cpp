@@ -1,6 +1,7 @@
 #include "../include/client.h"
 #include "../include/sockets.h"
 #include "../include/tcp_connection.h"
+#include "../include/md5_codec.h"
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -39,7 +40,7 @@ void Client::connect() {
         continue;
       }
       else {
-        TcpConnection* ptr = new TcpConnection(fd_, EPOLLIN);
+        TcpConnection* ptr = new TcpConnection(fd_, EPOLLIN, new Md5Codec());
         ptr->setOnMessage(on_message_);
         ptr->setOnConnection(on_connection_);
         ptr->setOnWriteComplete(on_write_complete_);
@@ -63,7 +64,7 @@ void Client::connect() {
     else {
       assert(ret == -1);
       if(errno == EINPROGRESS) {
-        TcpConnection* ptr = new TcpConnection(fd_, EPOLLOUT);
+        TcpConnection* ptr = new TcpConnection(fd_, EPOLLOUT, new Md5Codec());
         //...
         ptr->setOnMessage(on_message_);
         ptr->setOnConnection(on_connection_);
@@ -77,7 +78,7 @@ void Client::connect() {
         auto key = sockets::get_tcp_iport(fd_);
         ptr->set_iport(key);
         add_to_poller(ptr);
-        loop_->run_after(5000, [this, key]()->bool {
+        loop_->run_after(3000, [this, key]()->bool {
           logger()->info("timer wake up.");
           if(loop_->conns_.find(key) == loop_->conns_.end()) {
             return false;

@@ -12,14 +12,17 @@ public:
   myClient(std::string ip, uint16_t port):client_(ip, port) {
     client_.setOnConnection([](TcpConnection* ptr)->void {
       if(ptr->isReadComplete() == true) {
-        return;
+        if(ptr->isWriteComplete() == false) {
+          logger()->warning("endpoint close before shutdownwr.");
+          ptr->forceClose();
+        }
       }
       logger()->info("new connection.");
       ptr->send("begin");
     });
     client_.setOnMessage([](TcpConnection* ptr)->void {
       logger()->info("get message.");
-      logger()->info(ptr->read(ptr->size()));
+      logger()->info(ptr->getCodec()->getMessage());
       char buf[128] = {0};
       gets(buf);
       if(buf[0] == 'q') {
@@ -43,7 +46,7 @@ public:
   }
 };
 
-int main() {
+int main1() {
   Signal::instance().ign(SIGPIPE);
   Poller pool;
   Signal::instance().handle(SIGINT, [&]()->void {

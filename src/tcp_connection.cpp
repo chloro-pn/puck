@@ -1,10 +1,11 @@
 #include "../include/tcp_connection.h"
+#include "../include/codec.h"
 #include <unistd.h>
 #include <sys/socket.h> // shutdown
 
 namespace puck {
 
-TcpConnection::TcpConnection(int fd, int events):
+TcpConnection::TcpConnection(int fd, int events, Codec* codec):
                              read_buf_(1024*8),
                              write_buf_(1024 * 8),
                              fd_(fd),
@@ -21,8 +22,30 @@ TcpConnection::TcpConnection(int fd, int events):
                              alive_(true),
                              heart_beat_(false),
                              each_ms_(-1),
-                             conning_(false) {
+                             conning_(false),
+                             codec_(codec){
 
+}
+
+TcpConnection::~TcpConnection() {
+  delete codec_;
+}
+
+void TcpConnection::send(const char* ptr, size_t n) {
+  if(want_shutdown_wr_ == true) {
+    return;
+  }
+  if(codec_ == nullptr) {
+    write_buf_.push(ptr, n);
+  }
+  else {
+   std::string ret = codec_->encode(ptr, n);
+   write_buf_.push(ret.data(), ret.size());
+  }
+  if(writing_ == false) {
+    events_ = events_ | EPOLLOUT;
+    writing_ = true;
+  }
 }
 
 const char* TcpConnection::getStateStr() {
@@ -46,6 +69,9 @@ const char* TcpConnection::getStateStr() {
   }
   else if(state_ == connState::out_of_data) {
     return "out of date";
+  }
+  else if(state_ == connState::codec_error) {
+    return "codec error";
   }
   else {
     return "unknow error";
@@ -95,7 +121,7 @@ void TcpConnection::handle(int events) {
   if(events & EPOLLOUT) {
     int n = ::write(fd_, write_buf_.data(), write_buf_.usedSize());
     if (n == -1) {
-      if(errno != EWOULDBLOCK || errno != EPIPE) {
+      if(errno != EWOULDBLOCK) {
         setState(connState::write_error);
         error_value_ = errno;
         return;

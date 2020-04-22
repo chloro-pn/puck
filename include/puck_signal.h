@@ -10,12 +10,12 @@ class Signal {
   friend void handle_all_sigs(int);
 
 private:
-  std::map<int, std::function<void(int)>> sig_handle_;
+  std::map<int, std::function<void()>> sig_handle_;
 
   Signal();
 
 public:
-  void handle(int sig,const std::function<void(int)>& handle);
+  void handle(int sig,const std::function<void()>& handle);
 
   static Signal& instance();
 

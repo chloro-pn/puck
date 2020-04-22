@@ -30,7 +30,7 @@ void Buffer::endMove(size_t n) {
   }
   end_ += n;
   if(unusedSize() <= 1024) {
-    if(begin_ >= 2048) {
+    if(begin_ >= 1024) {
       moveToForward();
     }
     else {
