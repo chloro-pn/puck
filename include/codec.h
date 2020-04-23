@@ -23,13 +23,13 @@ public:
     return message_;
   }
 
-  virtual void onMessage(TcpConnection* ptr);
+  virtual void onMessage(TcpConnection* ptr) = 0;
 
   std::string what() const ;
 
   void setCodecError(TcpConnection* ptr);
 
-  virtual std::string encode(const char* ptr, size_t n);
+  virtual std::string encode(const char* ptr, size_t n) = 0;
 
   virtual ~Codec() = default;
 };

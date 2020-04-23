@@ -29,6 +29,10 @@ private:
 
   void accept_callback(TcpConnection* con);
 
+  TcpConnection* createTcpConnection(int);
+
+  TcpConnection* createAcceptConnection();
+
 public:
   TcpServer(uint16_t port);
 

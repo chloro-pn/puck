@@ -23,7 +23,8 @@ TcpConnection::TcpConnection(int fd, int events, Codec* codec):
                              heart_beat_(false),
                              each_ms_(-1),
                              conning_(false),
-                             codec_(codec){
+                             codec_(codec),
+                             added_to_poller_(false) {
 
 }
 
@@ -39,8 +40,8 @@ void TcpConnection::send(const char* ptr, size_t n) {
     write_buf_.push(ptr, n);
   }
   else {
-   std::string ret = codec_->encode(ptr, n);
-   write_buf_.push(ret.data(), ret.size());
+    std::string ret = codec_->encode(ptr, n);
+    write_buf_.push(ret.data(), ret.size());
   }
   if(writing_ == false) {
     events_ = events_ | EPOLLOUT;

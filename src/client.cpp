@@ -16,7 +16,7 @@ Client::Client(std::string ip, uint16_t port):loop_(nullptr),
 
 }
 
-void Client::connect() {
+void Client::connect(int ms) {
   while(true) {
     fd_ = sockets::get_nonblock_socket();
     sockets::no_delay(fd_);
@@ -40,20 +40,10 @@ void Client::connect() {
         continue;
       }
       else {
-        TcpConnection* ptr = new TcpConnection(fd_, EPOLLIN, new Md5Codec());
-        ptr->setOnMessage(on_message_);
-        ptr->setOnConnection(on_connection_);
-        ptr->setOnWriteComplete(on_write_complete_);
-        ptr->setOnClose(on_close_);
-        ptr->setConnectedFlag();
-        auto key = sockets::get_tcp_iport(fd_);
-        ptr->set_iport(key);
-
+        TcpConnection* ptr = getConnectedConnection();
         ptr->onConnection();
         if(ptr->shouldClose()) {
-          ptr->onClose();
-          ::close(ptr->fd());
-          delete ptr;
+          loop_->clean(ptr);
         }
         else {
           add_to_poller(ptr);
@@ -64,41 +54,64 @@ void Client::connect() {
     else {
       assert(ret == -1);
       if(errno == EINPROGRESS) {
-        TcpConnection* ptr = new TcpConnection(fd_, EPOLLOUT, new Md5Codec());
-        //...
-        ptr->setOnMessage(on_message_);
-        ptr->setOnConnection(on_connection_);
-        ptr->setOnWriteComplete(on_write_complete_);
-        ptr->setOnClose(on_close_);
-        ptr->setOnSuccConn([this](TcpConnection* ptr)->void {
-          this->succ_conn(ptr);
-        });
-        ptr->setConningFlag();
+        TcpConnection* ptr = getConningConnection();
+        std::string key = ptr->iport();
 
-        auto key = sockets::get_tcp_iport(fd_);
-        ptr->set_iport(key);
         add_to_poller(ptr);
-        loop_->run_after(3000, [this, key]()->bool {
-          logger()->info("timer wake up.");
-          if(loop_->conns_.find(key) == loop_->conns_.end()) {
-            return false;
-          }
-          else {
-            TcpConnection* ptr = loop_->conns_[key];
-            if(ptr->isConning() == true) {
-              ptr->setState(TcpConnection::connState::out_of_data);
-              loop_->clean(ptr);
-              return false;
-            }
-            else {
-              return false;
-            }
-          }
+        loop_->run_after(ms, [this, key]()->bool {
+          this->connectCheck(key);
+          return false;
         });
       }
       else {
         logger()->fatal(piece("connect error : ", strerror(errno)));
       }
+      return;
+    }
+  }
+}
+
+TcpConnection* Client::getConningConnection() {
+  TcpConnection* ptr = new TcpConnection(fd_, EPOLLOUT);
+  ptr->setOnMessage(on_message_);
+  ptr->setOnConnection(on_connection_);
+  ptr->setOnWriteComplete(on_write_complete_);
+  ptr->setOnClose(on_close_);
+  ptr->setOnSuccConn([this](TcpConnection* ptr)->void {
+    this->succ_conn(ptr);
+  });
+  ptr->setConningFlag();
+
+  auto key = sockets::get_tcp_iport(fd_);
+  ptr->set_iport(key);
+
+  return ptr;
+}
+
+TcpConnection* Client::getConnectedConnection() {
+  TcpConnection* ptr = new TcpConnection(fd_, EPOLLIN);
+  ptr->setOnMessage(on_message_);
+  ptr->setOnConnection(on_connection_);
+  ptr->setOnWriteComplete(on_write_complete_);
+  ptr->setOnClose(on_close_);
+  ptr->setConnectedFlag();
+  auto key = sockets::get_tcp_iport(fd_);
+  ptr->set_iport(key);
+  return ptr;
+}
+
+void Client::connectCheck(std::string key) {
+  if(loop_->conns_.find(key) == loop_->conns_.end()) {
+    return;
+  }
+  else {
+    TcpConnection* ptr = loop_->conns_[key];
+    if(ptr->isConning() == true) {
+      ptr->setState(TcpConnection::connState::out_of_data);
+      loop_->clean(ptr);
+      return;
+    }
+    else {
       return;
     }
   }
@@ -114,10 +127,7 @@ bool Client::isSelfConnect(int fd) {
 
 void Client::add_to_poller(TcpConnection* ptr) {
   loop_->push_func([ptr, this]()->void {
-    epoll_event ev;
-    ev.events = ptr->events();
-    ev.data.ptr = ptr;
-    loop_->add(ptr->fd(), &ev);
+    loop_->add(ptr);
   });
   loop_->wake_up();
 }

@@ -37,14 +37,6 @@ private:
 
   ~TcpConnection();
 
-  void setCodec(Codec* codec) {
-    codec_ = codec;
-    codec_->setOnMessage(on_message_);
-    on_message_ = [this](TcpConnection* ptr)->void {
-      this->codec_->onMessage(ptr);
-    };
-  }
-
   bool isListenSocket() const {
     return listen_socket_;
   }
@@ -175,6 +167,14 @@ private:
   }
 
 public:
+  void setCodec(Codec* codec) {
+    codec_ = codec;
+    codec_->setOnMessage(on_message_);
+    on_message_ = [this](TcpConnection* ptr)->void {
+      this->codec_->onMessage(ptr);
+    };
+  }
+
   void send(const char* ptr) {
     send(ptr, strlen(ptr));
   }
@@ -285,6 +285,8 @@ private:
   std::shared_ptr<void> context_;
 
   Codec* codec_;
+
+  bool added_to_poller_;
 };
 }
 

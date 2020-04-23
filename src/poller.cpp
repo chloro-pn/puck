@@ -14,31 +14,23 @@ Poller::Poller():epfd_(-1), eventfd_(-1), mut_(new std::mutex()),stop_(false) {
   if(epfd_ == -1) {
     logger()->fatal(piece("epoll create error : ", strerror(errno)));
   }
-  eventfd_ = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-  if(eventfd_ == -1) {
-    logger()->fatal(piece("eventfd error : ", strerror(errno)));
-  }
 
-  TcpConnection* ptr = new TcpConnection(eventfd_, EPOLLIN);
-  ptr->setEventFdFlag();
-  epoll_event ev;
-  ev.data.ptr = ptr;
-  ev.events = EPOLLIN;
-  add(eventfd_, &ev);
+  TcpConnection* ptr = createEventConnection();
+  add(ptr);
 }
 
 Poller::~Poller() {
-  int n = ::close(epfd_);
-  if(n == -1) {
-    logger()->fatal("epoll close error.");
-  }
-  n = ::close(eventfd_);
+  int n = ::close(eventfd_);
   if(n == -1) {
     logger()->fatal("eventfd close error.");
   }
   for(auto& each : conns_) {
     each.second->setState(TcpConnection::connState::force_colse);
     clean(each.second);
+  }
+  n = ::close(epfd_);
+  if(n == -1) {
+    logger()->fatal("epoll close error.");
   }
 }
 
@@ -48,12 +40,17 @@ void Poller::run_after(uint32_t ms, const task_type& task) {
   timers_.push(te);
 }
 
-void Poller::add(int fd, epoll_event* ev) {
-  int n = ::epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, ev);
+void Poller::add(TcpConnection* ptr) {
+  epoll_event ev;
+  ev.events = ptr->events();
+  ev.data.ptr = ptr;
+
+  ptr->added_to_poller_ = true;
+  int n = ::epoll_ctl(epfd_, EPOLL_CTL_ADD, ptr->fd(), &ev);
   if(n == -1) {
     logger()->fatal("epoll add error.");
   }
-  TcpConnection* ptr = static_cast<TcpConnection*>(ev->data.ptr);
+
   if(ptr->isListenSocket() || ptr->isEventFd()) {
     return;
   }
@@ -71,6 +68,35 @@ void Poller::add(int fd, epoll_event* ev) {
       return handle_heart_beat(key);
     });
   }
+}
+
+void Poller::clean(TcpConnection *ptr) {
+  int fd = ptr->fd();
+  if(ptr->added_to_poller_ == true) {
+    int ret = epoll_ctl(epfd_, EPOLL_CTL_DEL,ptr->fd(), nullptr);
+    if(ret != 0) {
+      logger()->fatal(piece("epoll ctl error : ", strerror(errno)));
+    }
+  }
+  if(!(ptr->isEventFd()) && !(ptr->isListenSocket())) {
+    ptr->onClose();
+  }
+  if(ptr->getState() != TcpConnection::connState::succ_close) {
+    logger()->warning(piece("fd ", fd, " close. state : ", ptr->getStateStr()));
+  }
+  int n = close(fd);
+  if(n == -1) {
+    logger()->fatal(piece("close error. errno : ", strerror(errno)));
+  }
+  conns_.erase(ptr->iport());
+  delete ptr;
+}
+
+void Poller::change(TcpConnection *ptr) {
+  epoll_event ev;
+  ev.events = ptr->events();
+  ev.data.ptr = ptr;
+  epoll_ctl(epfd_, EPOLL_CTL_MOD, ptr->fd(), &ev);
 }
 
 int Poller::get_latest_time() {
@@ -93,28 +119,6 @@ int Poller::get_latest_time() {
   return -1;
 }
 
-void Poller::clean(TcpConnection *ptr) {
-  ptr->onClose();
-  int fd = ptr->fd();
-  epoll_ctl(epfd_, EPOLL_CTL_DEL,ptr->fd(), nullptr);
-  if(ptr->getState() != TcpConnection::connState::succ_close) {
-    logger()->warning(piece("fd ", fd, " close. state : ", ptr->getStateStr()));
-  }
-  int n = close(fd);
-  if(n == -1) {
-    logger()->fatal(piece("close error. errno : ", strerror(errno)));
-  }
-  conns_.erase(ptr->iport());
-  delete ptr;
-}
-
-void Poller::change(TcpConnection *ptr) {
-  epoll_event ev;
-  ev.events = ptr->events();
-  ev.data.ptr = ptr;
-  epoll_ctl(epfd_, EPOLL_CTL_MOD, ptr->fd(), &ev);
-}
-
 void Poller::handle_timer_events() {
   time_point<system_clock, milliseconds> now = time_point_cast<milliseconds>(system_clock::now());
   while(timers_.empty() == false) {
@@ -130,6 +134,25 @@ void Poller::handle_timer_events() {
     else {
       return;
     }
+  }
+}
+
+TcpConnection* Poller::createEventConnection() {
+  eventfd_ = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+  if(eventfd_ == -1) {
+    logger()->fatal(piece("eventfd error : ", strerror(errno)));
+  }
+
+  TcpConnection* ptr = new TcpConnection(eventfd_, EPOLLIN);
+  ptr->setEventFdFlag();
+  return ptr;
+}
+
+void Poller::wake_up() {
+  uint64_t u = 2;
+  ssize_t n = ::write(eventfd_, &u, sizeof(u));
+  if(n != sizeof(u)) {
+    logger()->fatal(piece("eventfd write error : ", strerror(errno)));
   }
 }
 
@@ -151,9 +174,6 @@ void Poller::loop() {
     std::vector<epoll_event> evs;
     evs.resize(1024);
     int ms = get_latest_time();
-    if(ms == 0) {
-      ms = -1;
-    }
     int ready = epoll_wait(epfd_, &*evs.begin(), evs.size(), ms);
     if(epfd_ == -1) {
       logger()->fatal("epoll create error.");
@@ -189,14 +209,6 @@ void Poller::loop() {
     }
     handle_timer_events();
     handle_funcs();
-  }
-}
-
-void Poller::wake_up() {
-  uint64_t u = 2;
-  ssize_t n = ::write(eventfd_, &u, sizeof(u));
-  if(n != sizeof(u)) {
-    logger()->fatal(piece("eventfd write error : ", strerror(errno)));
   }
 }
 

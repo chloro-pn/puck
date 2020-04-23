@@ -7,13 +7,13 @@
 
 namespace puck {
 class Client {
-
-    using callback_type = std::function<void(TcpConnection*)>;
+private:
+using callback_type = std::function<void(TcpConnection*)>;
 
 public:
   Client(std::string, uint16_t);
 
-  void connect();
+  void connect(int ms);
 
   void bind(Poller* loop) {
     loop_ = loop;
@@ -42,6 +42,12 @@ private:
   int fd_;
 
   bool isSelfConnect(int);
+
+  TcpConnection* getConningConnection();
+
+  TcpConnection* getConnectedConnection();
+
+  void connectCheck(std::string key);
 
   void add_to_poller(TcpConnection* ptr);
 

@@ -37,7 +37,7 @@ void Md5Codec::onMessage(TcpConnection *ptr) {
       std::string md5 = message_.substr(length_, 32);
       message_ = message_.substr(0, length_);
       if(MD5(message_).toStr() != md5) {
-        logger()->warning(piece("md5 check error : ", md5, MD5(message_).toStr()));
+        logger()->error(piece("md5 check error : ", md5, " - ", MD5(message_).toStr()));
         setCodecError(ptr);
         return;
       }

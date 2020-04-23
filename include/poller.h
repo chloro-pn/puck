@@ -53,6 +53,19 @@ private:
 
   std::priority_queue<time_event, std::vector<time_event>, cmp_for_time_event> timers_;
 
+  int get_latest_time();
+
+  void handle_timer_events();
+
+  void handle_wake_up();
+
+  void change(TcpConnection* ptr);
+
+  bool handle_heart_beat(std::string key);
+
+  void handle_funcs();
+
+  TcpConnection* createEventConnection();
 public:
   Poller();
 
@@ -65,27 +78,15 @@ public:
 
   void run_after(uint32_t ms, const task_type& task);
 
-  void add(int fd, epoll_event* ev);
-
-  int get_latest_time();
-
-  void handle_timer_events();
+  void add(TcpConnection* ptr);
 
   void loop();
 
   void wake_up();
 
-  void handle_wake_up();
-
   void push_func(const std::function<void()>& func);
 
-  void handle_funcs();
-
   void clean(TcpConnection* ptr);
-
-  void change(TcpConnection* ptr);
-
-  bool handle_heart_beat(std::string key);
 };
 }
 

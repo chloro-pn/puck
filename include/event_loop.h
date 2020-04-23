@@ -21,7 +21,7 @@ public:
 
   ~EventLoop();
 
-  void add(int fd, epoll_event* ev);
+  void add(TcpConnection* ptr);
 
   void newConnection(TcpConnection* ptr);
 

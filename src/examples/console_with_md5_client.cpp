@@ -1,12 +1,13 @@
 #include "../../include/client.h"
 #include "../../include/puck_signal.h"
 #include "../../include/log/pnlog.h"
+#include "../../include/md5_codec.h"
 #include <cstdio>
 #include <memory>
 
 using namespace puck;
 
-class myClient {
+class myClientMd5 {
 private:
   Client client_;
   std::shared_ptr<pnlog::CapTure> logger_;
@@ -23,7 +24,7 @@ private:
   }
 
 public:
-  myClient(std::string ip, uint16_t port):client_(ip, port),logger_(pnlog::backend->get_capture(0)) {
+  myClientMd5(std::string ip, uint16_t port):client_(ip, port),logger_(pnlog::backend->get_capture(0)) {
     client_.setOnConnection([this](TcpConnection* ptr)->void {
       if(ptr->isReadComplete() == true) {
         if(ptr->isWriteComplete() == false) {
@@ -32,14 +33,13 @@ public:
         }
       }
       logger_->info("new connection.");
+      ptr->setCodec(new Md5Codec());
       getFromConsoleAndSend(ptr);
     });
 
     client_.setOnMessage([this](TcpConnection* ptr)->void {
-      std::string ret;
-      ret.append(ptr->data(), ptr->size());
+      std::string ret = ptr->getCodec()->getMessage();
       logger_->info(piece("get message : ", ret));
-      ptr->abandon(ptr->size());
       getFromConsoleAndSend(ptr);
     });
 
@@ -66,7 +66,7 @@ int main() {
     logger()->info("quit");
     exit(-1);
   });
-  myClient client("127.0.0.1", 12345);
+  myClientMd5 client("127.0.0.1", 12345);
   client.bind(&pool);
   client.connect();
   pool.loop();

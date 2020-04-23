@@ -15,19 +15,33 @@ void TcpServer::accept_callback(TcpConnection* con) {
       }
     }
     else {
-      sockets::set_nonblock(clientfd);
-      sockets::no_delay(clientfd);
-      TcpConnection* ptr = new TcpConnection(clientfd, EPOLLIN);
-      ptr->setOnMessage(on_message_);
-      ptr->setOnConnection(on_connection_);
-      ptr->setOnWriteComplete(on_write_complete_);
-      ptr->setOnClose(on_close_);
-      if(isOpenHeartBeat() == true) {
-        ptr->openHeartBeat(each_ms_);
-      }
+      TcpConnection* ptr = createTcpConnection(clientfd);
       loop_->newConnection(ptr);
     }
   }
+}
+
+TcpConnection* TcpServer::createTcpConnection(int clientfd) {
+  sockets::set_nonblock(clientfd);
+  sockets::no_delay(clientfd);
+  TcpConnection* ptr = new TcpConnection(clientfd, EPOLLIN);
+  ptr->setOnMessage(on_message_);
+  ptr->setOnConnection(on_connection_);
+  ptr->setOnWriteComplete(on_write_complete_);
+  ptr->setOnClose(on_close_);
+  if(isOpenHeartBeat() == true) {
+    ptr->openHeartBeat(each_ms_);
+  }
+  return ptr;
+}
+
+TcpConnection* TcpServer::createAcceptConnection() {
+  TcpConnection* ptr = new TcpConnection(listenfd_, EPOLLIN);
+  ptr->setListenSocketFlag();
+  ptr->setOnAccept([this](TcpConnection* con)->void {
+    this->accept_callback(con);
+  });
+  return ptr;
 }
 
 TcpServer::TcpServer(uint16_t port):listenfd_(-1),
@@ -56,14 +70,7 @@ TcpServer::TcpServer(uint16_t port):listenfd_(-1),
 
 void TcpServer::bind(EventLoop* poller_) {
   loop_ = poller_;
-  epoll_event ev;
-  ev.events = EPOLLIN;
-  TcpConnection* ptr = new TcpConnection(listenfd_, EPOLLIN);
-  ptr->setListenSocketFlag();
-  ptr->setOnAccept([this](TcpConnection* con)->void {
-    this->accept_callback(con);
-  });
-  ev.data.ptr = ptr;
-  loop_->add(listenfd_, &ev);
+  TcpConnection* ptr = createAcceptConnection();
+  loop_->add(ptr);
 }
 }

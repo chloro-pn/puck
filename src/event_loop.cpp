@@ -32,8 +32,8 @@ void EventLoop::stop() {
   logger()->info("EventLoop stop.");
 }
 
-void EventLoop::add(int fd, epoll_event* ev) {
-  base_loop_.add(fd, ev);
+void EventLoop::add(TcpConnection* ptr) {
+  base_loop_.add(ptr);
 }
 
 void EventLoop::new_connection_callback(Poller* loop, TcpConnection* ptr) {
@@ -42,18 +42,10 @@ void EventLoop::new_connection_callback(Poller* loop, TcpConnection* ptr) {
   ptr->set_iport(key);
   ptr->onConnection();
   if(ptr->shouldClose()) {
-    ptr->onClose();
-    delete ptr;
-    int n = ::close(clientfd);
-    if(n == -1) {
-      logger()->fatal(piece("close error : ", strerror(errno)));
-    }
+    base_loop_.clean(ptr);
   }
   else {
-    epoll_event ev;
-    ev.data.ptr = ptr;
-    ev.events = ptr->events();
-    loop->add(clientfd, &ev);
+    loop->add(ptr);
   }
 }
 
