@@ -36,7 +36,7 @@ private:
       logger_->info(piece("send ", message, " to ", each->iport()));
       each->send(message.data(), message.size());
       Poller* loop = each->getLoop();
-      each->getLoop()->push_func([loop, each]()->void {
+      loop->push_func([loop, each]()->void {
         loop->change(each);
       });
       loop->wake_up();
