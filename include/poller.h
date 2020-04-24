@@ -12,14 +12,15 @@
 #include <memory>
 #include <atomic>
 #include "console.h"
-#include "tcp_connection.h"
 
 namespace puck {
 
 using namespace std::chrono;
+class TcpConnection;
 
 class Poller {
   friend class Client;
+  friend class TcpConnection;
 
 private:
   int epfd_;
@@ -59,13 +60,12 @@ private:
 
   void handle_wake_up();
 
-  void change(TcpConnection* ptr);
-
   bool handle_heart_beat(std::string key);
 
   void handle_funcs();
 
   TcpConnection* createEventConnection();
+
 public:
   Poller();
 
@@ -87,6 +87,8 @@ public:
   void push_func(const std::function<void()>& func);
 
   void clean(TcpConnection* ptr);
+
+  void change(TcpConnection* ptr);
 };
 }
 

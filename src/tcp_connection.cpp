@@ -10,7 +10,7 @@ TcpConnection::TcpConnection(int fd, int events, Codec* codec):
                              write_buf_(1024 * 8),
                              fd_(fd),
                              events_(events),
-                             events_change_(false),
+                             old_events_(events),
                              state_(connState::go_on),
                              error_value_(0),
                              writing_(false),
@@ -33,6 +33,7 @@ TcpConnection::~TcpConnection() {
 }
 
 void TcpConnection::send(const char* ptr, size_t n) {
+  std::unique_lock<std::mutex> mut(mut_);
   if(want_shutdown_wr_ == true) {
     return;
   }
@@ -80,12 +81,15 @@ const char* TcpConnection::getStateStr() {
 }
 
 void TcpConnection::handle(int events) {
-  int init_events = events_;
-  events_change_ = false;
   if(events & EPOLLIN) {
     alive_ = true;
     if(read_buf_.unusedSize() == 0) {
       logger()->warning("too many messages storaged in the read buf.");
+      onMessage();
+      if(shouldClose()) {
+        return;
+      }
+    read_buf_.tryMoveToForward();
     }
     else {
     int n = -1;
@@ -106,12 +110,12 @@ void TcpConnection::handle(int events) {
     }
     else { // n == 0.
       read_zero_ = true;
-      if(really_shutdown_wr_ == true) {
-        setState(connState::succ_close);
-        return;
-      }
       onConnection();
       if(shouldClose()) {
+        return;
+      }
+      if(really_shutdown_wr_ == true) {
+        setState(connState::succ_close);
         return;
       }
       events_ = events_ & (~EPOLLIN);
@@ -152,9 +156,6 @@ void TcpConnection::handle(int events) {
         return;
       }
     }
-  }
-  if(init_events != events_) {
-    events_change_ = true;
   }
 }
 }

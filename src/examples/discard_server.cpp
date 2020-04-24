@@ -6,13 +6,13 @@
 
 using namespace puck;
 
-class echo_server {
+class discard_server {
 private:
   TcpServer ts_;
   std::shared_ptr<pnlog::CapTure> logger_;
 
 public:
-  explicit echo_server(uint16_t port):ts_(port), logger_(pnlog::backend->get_capture(0)) {
+  explicit discard_server(uint16_t port):ts_(port), logger_(pnlog::backend->get_capture(0)) {
     logger_->enable_time();
     ts_.setOnConnection([this](TcpConnection* con)->void {
       if(con->isReadComplete() == true) {
@@ -24,11 +24,10 @@ public:
     });
 
     ts_.setOnMessage([this](TcpConnection* con)->void {
-      std::string str;
-      str.append(con->data(), con->size());
+      size_t n = con->size();
       con->abandon(con->size());
-      logger_->trace(piece("message get : ", str));
-      con->send(str.data(), str.size());
+      logger_->trace(piece("discards ", n, " bytes."));
+      con->send(piece("discards ", n, " bytes.\n").c_str());
     });
 
     ts_.setOnClose([this](TcpConnection* con)->void {
@@ -45,7 +44,7 @@ public:
     ts_.bind(loop);
   }
 
-  ~echo_server() {
+  ~discard_server() {
     logger_->close();
   }
 };
@@ -53,7 +52,7 @@ public:
 int main() {
   Signal::instance().ign(SIGPIPE);
   EventLoop pool(2);
-  echo_server ds(12345);
+  discard_server ds(12345);
   ds.bind(&pool);
   Signal::instance().handle(SIGINT, [&]()->void {
     pool.stop();

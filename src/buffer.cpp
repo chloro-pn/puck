@@ -2,6 +2,12 @@
 #include <cstring>
 
 namespace puck {
+void Buffer::tryMoveToForward() {
+  if(end_ - begin_ >= 4096) {
+    moveToForward();
+  }
+}
+
 void Buffer::moveToForward() {
   size_t size = usedSize();
   std::string tmp = buffer_.substr(begin_, size);

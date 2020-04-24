@@ -2,33 +2,32 @@
 #include "../../include/tcp_server.h"
 #include "../../include/puck_signal.h"
 #include "../../include/log/pnlog.h"
+#include <ctime>
 #include <memory>
 
 using namespace puck;
 
-class echo_server {
+class daytime_server {
 private:
   TcpServer ts_;
   std::shared_ptr<pnlog::CapTure> logger_;
 
 public:
-  explicit echo_server(uint16_t port):ts_(port), logger_(pnlog::backend->get_capture(0)) {
+  explicit daytime_server(uint16_t port):ts_(port), logger_(pnlog::backend->get_capture(0)) {
     logger_->enable_time();
     ts_.setOnConnection([this](TcpConnection* con)->void {
       if(con->isReadComplete() == true) {
-        con->shutdownWr();
+        if(con->isWriteComplete() == false) {
+          logger_->warning("endpoint close before shutdownwr.");
+          con->forceClose();
+        }
       }
       else {
         logger_->trace(piece("echo connection ", con->iport(), " start."));
+        std::string t = now();
+        con->send(t.data(), t.size());
+        con->shutdownWr();
       }
-    });
-
-    ts_.setOnMessage([this](TcpConnection* con)->void {
-      std::string str;
-      str.append(con->data(), con->size());
-      con->abandon(con->size());
-      logger_->trace(piece("message get : ", str));
-      con->send(str.data(), str.size());
     });
 
     ts_.setOnClose([this](TcpConnection* con)->void {
@@ -41,11 +40,18 @@ public:
     });
   }
 
+  std::string now() const {
+    time_t t;
+    t = time(nullptr);
+    std::string ret(ctime(&t));
+    return ret;
+  }
+
   void bind(EventLoop* loop) {
     ts_.bind(loop);
   }
 
-  ~echo_server() {
+  ~daytime_server() {
     logger_->close();
   }
 };
@@ -53,7 +59,7 @@ public:
 int main() {
   Signal::instance().ign(SIGPIPE);
   EventLoop pool(2);
-  echo_server ds(12345);
+  daytime_server ds(12345);
   ds.bind(&pool);
   Signal::instance().handle(SIGINT, [&]()->void {
     pool.stop();

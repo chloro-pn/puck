@@ -30,6 +30,7 @@ public:
           logger_->warning("endpoint close before shutdownwr.");
           ptr->forceClose();
         }
+        return;
       }
       logger_->info("new connection.");
       getFromConsoleAndSend(ptr);

@@ -97,6 +97,7 @@ TcpConnection* Client::getConnectedConnection() {
   ptr->setConnectedFlag();
   auto key = sockets::get_tcp_iport(fd_);
   ptr->set_iport(key);
+
   return ptr;
 }
 

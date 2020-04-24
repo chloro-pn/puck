@@ -14,6 +14,8 @@ private:
   size_t begin_;
   size_t end_;
 
+  void tryMoveToForward();
+
   void moveToForward();
 
   void beginMove(size_t n);

@@ -3,10 +3,13 @@
 
 #include "buffer.h"
 #include "codec.h"
+#include "poller.h"
 #include <functional>
 #include <sys/epoll.h>
 #include <cassert>
 #include <string>
+#include <vector>
+#include <mutex>
 
 namespace puck {
 class TcpConnection {
@@ -28,6 +31,13 @@ public:
 
 private:
   using callback_type = std::function<void(TcpConnection*)>;
+
+  using task_type = Poller::task_type;
+
+  struct timer_task {
+    task_type tt_;
+    int ms_;
+  };
 
   int fd() const {
     return fd_;
@@ -70,7 +80,7 @@ private:
   }
 
   bool isEventsChange() const {
-    return events_change_;
+    return events_ != old_events_;
   }
 
   void setState(connState s) {
@@ -146,10 +156,6 @@ private:
     on_succ_conn_ = ct;
   }
 
-  bool eventsChange() const {
-    return events_change_;
-  }
-
   void handle(int events);
 
   void set_iport(const std::string& str) {
@@ -167,6 +173,23 @@ private:
   }
 
 public:
+  Poller* getLoop() {
+    return loop_;
+  }
+
+  void runAfter(int ms, task_type tt) {
+    auto tmp = [this, tt]()->bool {
+      if(this->loop_->conns_.find(iport()) == this->loop_->conns_.end()) {
+        return false;
+      }
+      bool ret = tt();
+      if(isEventsChange() == true) {
+        loop_->change(this);
+      }
+    };
+    loop_->run_after(ms, tmp);
+  }
+
   void setCodec(Codec* codec) {
     codec_ = codec;
     codec_->setOnMessage(on_message_);
@@ -253,7 +276,7 @@ private:
 
   int fd_;
   int events_;
-  bool events_change_;
+  int old_events_;
 
   connState state_;
   int error_value_;
@@ -287,6 +310,9 @@ private:
   Codec* codec_;
 
   bool added_to_poller_;
+  Poller* loop_;
+
+  std::mutex mut_;
 };
 }
 

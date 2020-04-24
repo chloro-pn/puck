@@ -19,6 +19,7 @@ void Md5Codec::onMessage(TcpConnection *ptr) {
       ptr->abandon(sizeof(length_));
       length_ = sockets::networkToHost(length_);
       if(length_ < 32 || length_ > 8096) {
+        what_ = piece("length error : ", length_);
         setCodecError(ptr);
         return;
       }

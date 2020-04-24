@@ -13,6 +13,7 @@
 #include <sys/epoll.h>
 #include <sys/un.h>
 #include <sys/errno.h>
+#include <vector>
 
 namespace puck {
 class TcpServer {
@@ -63,6 +64,7 @@ public:
   bool isOpenHeartBeat() const {
     return heart_beat_;
   }
+
 };
 }
 

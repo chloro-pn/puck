@@ -46,23 +46,20 @@ void Poller::add(TcpConnection* ptr) {
   ev.data.ptr = ptr;
 
   ptr->added_to_poller_ = true;
+  ptr->loop_ = this;
+  ptr->old_events_ = ptr->events(); // must !!!
   int n = ::epoll_ctl(epfd_, EPOLL_CTL_ADD, ptr->fd(), &ev);
   if(n == -1) {
     logger()->fatal("epoll add error.");
   }
 
-  if(ptr->isListenSocket() || ptr->isEventFd()) {
-    return;
-  }
   std::string key = ptr->iport();
+
   if(conns_.find(key) != conns_.end()) {
     logger()->fatal(piece("repeated iport : ", key));
   }
   conns_[key] = ptr;
 
-  //std::ostringstream ss;
-  //ss << std::this_thread::get_id();
-  //logger()->info(piece("new connection on thread : ", ss.str()));
   if(ptr->isOpenHeartBeat()) {
     run_after(ptr->each_ms_, [this, key]()->bool {
       return handle_heart_beat(key);
@@ -83,6 +80,9 @@ void Poller::clean(TcpConnection *ptr) {
   }
   if(ptr->getState() != TcpConnection::connState::succ_close) {
     logger()->warning(piece("fd ", fd, " close. state : ", ptr->getStateStr()));
+    if(ptr->getState() == TcpConnection::connState::codec_error) {
+      logger()->warning(ptr->getCodec()->what());
+    }
   }
   int n = close(fd);
   if(n == -1) {
@@ -93,10 +93,14 @@ void Poller::clean(TcpConnection *ptr) {
 }
 
 void Poller::change(TcpConnection *ptr) {
+  if(ptr->isEventsChange() == false) {
+    return;
+  }
   epoll_event ev;
   ev.events = ptr->events();
   ev.data.ptr = ptr;
   epoll_ctl(epfd_, EPOLL_CTL_MOD, ptr->fd(), &ev);
+  ptr->old_events_ = ptr->events();
 }
 
 int Poller::get_latest_time() {
@@ -145,6 +149,7 @@ TcpConnection* Poller::createEventConnection() {
 
   TcpConnection* ptr = new TcpConnection(eventfd_, EPOLLIN);
   ptr->setEventFdFlag();
+  ptr->set_iport("eventConnection");
   return ptr;
 }
 
@@ -191,11 +196,7 @@ void Poller::loop() {
       if(ptr->isConning() == true) {
         ptr->setConnectedFlag();
         ptr->events_ = EPOLLIN;
-        int init_event = ptr->events();
         ptr->onSuccConn();
-        if(ptr->events() != init_event) {
-          ptr->events_change_ = true;
-        }
       }
       else {
         ptr->handle(evs[i].events);
@@ -203,7 +204,7 @@ void Poller::loop() {
       if(ptr->shouldClose()) {
         clean(ptr);
       }
-      else if(ptr->eventsChange() == true){
+      else {
         change(ptr);
       }
     }

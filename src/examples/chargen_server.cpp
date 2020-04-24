@@ -6,29 +6,35 @@
 
 using namespace puck;
 
-class echo_server {
+class chargen_server {
 private:
   TcpServer ts_;
   std::shared_ptr<pnlog::CapTure> logger_;
 
 public:
-  explicit echo_server(uint16_t port):ts_(port), logger_(pnlog::backend->get_capture(0)) {
+  explicit chargen_server(uint16_t port):ts_(port), logger_(pnlog::backend->get_capture(0)) {
     logger_->enable_time();
     ts_.setOnConnection([this](TcpConnection* con)->void {
       if(con->isReadComplete() == true) {
+        logger_->info("read complete.");
         con->shutdownWr();
       }
       else {
         logger_->trace(piece("echo connection ", con->iport(), " start."));
+        std::string ret;
+        ret.resize(1024, 'a');
+        con->send(ret.data(), 1024);
       }
     });
 
     ts_.setOnMessage([this](TcpConnection* con)->void {
-      std::string str;
-      str.append(con->data(), con->size());
       con->abandon(con->size());
-      logger_->trace(piece("message get : ", str));
-      con->send(str.data(), str.size());
+    });
+
+    ts_.setOnWriteComplete([this](TcpConnection* con)->void {
+      std::string ret;
+      ret.resize(1024, 'a');
+      con->send(ret.data(), 1024);
     });
 
     ts_.setOnClose([this](TcpConnection* con)->void {
@@ -45,7 +51,7 @@ public:
     ts_.bind(loop);
   }
 
-  ~echo_server() {
+  ~chargen_server() {
     logger_->close();
   }
 };
@@ -53,7 +59,7 @@ public:
 int main() {
   Signal::instance().ign(SIGPIPE);
   EventLoop pool(2);
-  echo_server ds(12345);
+  chargen_server ds(12345);
   ds.bind(&pool);
   Signal::instance().handle(SIGINT, [&]()->void {
     pool.stop();

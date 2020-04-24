@@ -42,7 +42,15 @@ void sockets::no_delay(int fd) {
   int onoff = 1;
   int ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY , &onoff, sizeof(onoff));
   if(ret < 0) {
-    logger()->fatal(piece("setsockopt error. ", strerror(errno)));
+    logger()->fatal(piece("no delay error. ", strerror(errno)));
+  }
+}
+
+void sockets::reuse_addr(int fd) {
+  int onoff = 1;
+  int ret = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &onoff, sizeof(onoff));
+  if(ret < 0) {
+    logger()->fatal(piece("reuse addr error. ", strerror(errno)));
   }
 }
 

@@ -12,6 +12,8 @@ public:
 
   static void no_delay(int fd);
 
+  static void reuse_addr(int fd);
+
   static uint16_t hostToNetwork(uint16_t n);
 
   static uint16_t networkToHost(uint16_t n);

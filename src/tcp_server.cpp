@@ -32,6 +32,7 @@ TcpConnection* TcpServer::createTcpConnection(int clientfd) {
   if(isOpenHeartBeat() == true) {
     ptr->openHeartBeat(each_ms_);
   }
+
   return ptr;
 }
 
@@ -41,6 +42,7 @@ TcpConnection* TcpServer::createAcceptConnection() {
   ptr->setOnAccept([this](TcpConnection* con)->void {
     this->accept_callback(con);
   });
+  ptr->set_iport("acceptConnection");
   return ptr;
 }
 
@@ -50,6 +52,7 @@ TcpServer::TcpServer(uint16_t port):listenfd_(-1),
                                     heart_beat_(false)
 {
   listenfd_ = sockets::get_nonblock_socket();
+  sockets::reuse_addr(listenfd_);
 
   struct sockaddr_in server_addr;
   bzero(&server_addr, sizeof(server_addr));
