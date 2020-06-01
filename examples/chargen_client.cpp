@@ -1,47 +1,45 @@
-#include "../../include/client.h"
-#include "../../include/puck_signal.h"
-#include "../../include/log/pnlog.h"
-#include "../../include/md5_codec.h"
+#include "../include/client.h"
+#include "../include/puck_signal.h"
+#include "../include/log/pnlog.h"
 #include <cstdio>
 #include <memory>
 
 using namespace puck;
 
-class myClientMd5 {
+class chargenClient {
 private:
   Client client_;
   std::shared_ptr<pnlog::CapTure> logger_;
-
-  void getFromConsoleAndSend(TcpConnection* ptr) {
-    char buf[128] = {0};
-    gets(buf);
-    if(buf[0] == 'q') {
-      ptr->shutdownWr();
-    }
-    else {
-      ptr->send(buf);
-    }
-  }
+  size_t sum_;
 
 public:
-  myClientMd5(std::string ip, uint16_t port):client_(ip, port),logger_(pnlog::backend->get_capture(0)) {
+  chargenClient(std::string ip, uint16_t port):client_(ip, port),
+                                               logger_(pnlog::backend->get_capture(0)),
+                                               sum_(0) {
     client_.setOnConnection([this](TcpConnection* ptr)->void {
       if(ptr->isReadComplete() == true) {
         if(ptr->isWriteComplete() == false) {
-          logger_->warning("endpoint close before shutdownwr.");
+          logger_->warning("read complete before shutdown.");
           ptr->forceClose();
+        }
+        else {
+          double mb = double(sum_) / (1024 * 1024);
+          logger_->info(piece("totally received ", mb, " Mb."));
         }
         return;
       }
       logger_->info("new connection.");
-      ptr->setCodec(new Md5Codec());
-      getFromConsoleAndSend(ptr);
+
+      ptr->runAfter(3000, [ptr]()->bool {
+                      ptr->shutdownWr();
+                      return false;
+                    });
+
     });
 
     client_.setOnMessage([this](TcpConnection* ptr)->void {
-      std::string ret = ptr->getCodec()->getMessage();
-      logger_->info(piece("get message : ", ret));
-      getFromConsoleAndSend(ptr);
+      sum_ += ptr->size();
+      ptr->abandon(ptr->size());
     });
 
     client_.setOnClose([](TcpConnection* ptr)->void {
@@ -67,7 +65,7 @@ int main() {
     logger()->info("quit");
     exit(-1);
   });
-  myClientMd5 client("127.0.0.1", 12345);
+  chargenClient client("127.0.0.1", 12345);
   client.bind(&pool);
   client.connect();
   pool.loop();

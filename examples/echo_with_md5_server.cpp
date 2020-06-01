@@ -1,8 +1,8 @@
-#include "../../include/tcp_connection.h"
-#include "../../include/tcp_server.h"
-#include "../../include/puck_signal.h"
-#include "../../include/log/pnlog.h"
-#include "../../include/md5_codec.h"
+#include "../include/tcp_connection.h"
+#include "../include/tcp_server.h"
+#include "../include/puck_signal.h"
+#include "../include/log/pnlog.h"
+#include "../include/md5_codec.h"
 #include <memory>
 
 using namespace puck;

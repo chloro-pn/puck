@@ -1,7 +1,7 @@
-#include "../../include/tcp_connection.h"
-#include "../../include/tcp_server.h"
-#include "../../include/puck_signal.h"
-#include "../../include/log/pnlog.h"
+#include "../include/tcp_connection.h"
+#include "../include/tcp_server.h"
+#include "../include/puck_signal.h"
+#include "../include/log/pnlog.h"
 #include <memory>
 #include <set>
 #include <mutex>
@@ -46,6 +46,9 @@ private:
 public:
   explicit chat_server(uint16_t port):ts_(port), logger_(pnlog::backend->get_capture(0)) {
     logger_->enable_time();
+
+    ts_.openHeartBeat(3000);
+
     ts_.setOnConnection([this](TcpConnection* con)->void {
       if(con->isReadComplete() == true) {
         con->shutdownWr();
