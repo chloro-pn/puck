@@ -5,7 +5,7 @@ TARGET = libpnlog.a
 
 INCLUDE_PATH = -I ../../include/
 
-SRCS := $(wildcard *.cpp) ../util/thread_pool.cpp
+SRCS := $(wildcard *.cpp) $(wildcatd ../util/*.cppp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS := $(SRCS:.cpp=.d)
 
