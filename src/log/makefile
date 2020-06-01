@@ -3,9 +3,9 @@ CXXFLAGS = -Wall -std=c++11
 
 TARGET = libpnlog.a
 
-INCLUDE_PATH = -I ../../include/log
+INCLUDE_PATH = -I ../../include
 
-SRCS := $(wildcard *.cpp) $(wildcatd ../util/*.cpp)
+SRCS := $(wildcard *.cpp) $(wildcard ../util/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 DEPS := $(SRCS:.cpp=.d)
 

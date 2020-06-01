@@ -3,7 +3,6 @@ CXXFLAGS = -Wall -std=c++11
 
 TARGET = libpuck.a
 
-LIBS_FLAG = -L./log/ -lpnlog
 INCLUDE_PATH = -I ../include
 
 SRCS := $(wildcard *.cpp) $(wildcard third_party/*.cpp) $(wildcard util/*.cpp)
@@ -13,7 +12,7 @@ LIBS := log/libpnlog.a
 
 #特殊的符号$@代表目标文件，$^代表所有依赖文件
 $(TARGET) : $(OBJS) $(LIBS)
-	ar crv $@ $(OBJS) ./log/libpnlog.a
+	ar crv $@ $(OBJS) $(LIBS)
 
 %.o : %.cpp
 	$(CXX) -o $@ -c $< -MMD -MP $(INCLUDE_PATH) $(CXXFLAGS)
