@@ -1,7 +1,7 @@
-#include "../include/client.h"
-#include "../include/sockets.h"
-#include "../include/tcp_connection.h"
-#include "../include/md5_codec.h"
+#include "client.h"
+#include "sockets.h"
+#include "tcp_connection.h"
+#include "md5_codec.h"
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>

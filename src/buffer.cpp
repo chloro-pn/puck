@@ -1,4 +1,4 @@
-#include "../include/buffer.h"
+#include "buffer.h"
 #include <cstring>
 
 namespace puck {
